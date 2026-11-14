@@ -77,6 +77,8 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .gap{display:inline-block;min-width:1.5em;border-bottom:.09em solid var(--yellow);text-align:center;margin:0 .06em}
 .gap.got{border-color:transparent;color:var(--lime);animation:zoomin .3s cubic-bezier(.3,1.8,.5,1)}
 .hl{color:var(--lime)}
+.card .hl{color:#e8590c}
+.wchip.dg{background:var(--orange);color:#fff}
 .seg{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:4px;background:rgba(255,255,255,.12);border-radius:26px;padding:5px;max-width:100%}
 .seg button{background:none;border-radius:99px;padding:.45em .8em;font-size:clamp(14px,2.5vmin,21px)}
 .seg button.on{background:var(--orange);color:#fff}
@@ -197,7 +199,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
     <div class="legend small"><span><i class="lv-"></i>Not met yet</span><span><i class="lv0"></i>Just met</span><span><i class="lv1"></i>Learning</span><span><i class="lv2"></i>Nearly there</span><span><i class="lv3"></i>Knows it</span><span>✗ = wrong taps</span></div>
     <p class="small" id="detail" style="min-height:1.5em;margin:10px 0 0"></p></div>
   <div class="panel"><h3>The kinds of question</h3>
-    <p class="small" style="margin:0">🔤 <b>First sound</b>: hear a word, tap the letter it starts with. &nbsp;🔊 <b>Hear it</b>: hear a word, tap the written word (sight words are always this kind). &nbsp;📖 <b>Read it</b>: read a word silently and tap its picture. &nbsp;🧩 <b>Missing letters</b>: hear a word and choose the missing digraph (sh, ch, ee…). &nbsp;🔨 <b>Build it</b>: see a picture, hear the word and tap the letters in order; nothing is marked right or wrong until every box is full; then a wrong word turns red and he taps letters to take them back. Newer items get the easier kinds, and look-alike choices come in as an item moves up.</p></div>
+    <p class="small" style="margin:0">🔤 <b>First sound</b>: hear a word, tap the letter it starts with. &nbsp;🔊 <b>Hear it</b>: hear a word, tap the written word (sight words are always this kind). &nbsp;📖 <b>Read it</b>: read a word silently and tap its picture. &nbsp;🧩 <b>Missing letters</b>: hear a word and choose the missing digraph (sh, ch, ee…); each choice says its sound when tapped. Digraphs are shown in a highlight colour and their sound is played before the word after a right answer. &nbsp;🔨 <b>Build it</b>: see a picture, hear the word and tap the letters in order; nothing is marked right or wrong until every box is full; then a wrong word turns red and he taps letters to take them back. Newer items get the easier kinds, and look-alike choices come in as an item moves up.</p></div>
   <div class="panel"><button class="pill danger" id="reset">Erase all progress</button></div>
 </section>
 
@@ -230,6 +232,8 @@ Object.entries(R.dig).forEach(([w,[g,p]])=>{g=g.split(' ');add({id:w,kind:'dig',
 R.sight.forEach(w=>add({id:'s_'+w.toLowerCase(),kind:'sight',w,g:[...w],pic:''}));
 const KINDS={letter:'🔤 Letter sounds',cvc:'🐱 Short words',dig:'🚢 Digraphs',sight:'👀 Sight words'};
 const aud=w=>'w_'+w.toLowerCase();
+// digraph words show their digraphs in a highlight colour
+const hw=it=>it.kind==='dig'?it.g.map(x=>DG.includes(x)?`<span class="hl">${x}</span>`:x).join(''):it.w;
 const sz=w=>w.length>=7?' s':w.length>=5?' m':'';
 // Pictures that could be mistaken for each other are never offered together.
 const CLASH=[['cup','mug'],['pan','egg','pot'],['van','cab'],['red','dot'],['ram','ox'],['kid','run','hug','cop'],['ship','boat'],['duck','chick'],['car','jeep','truck'],['rain','storm'],['king','queen'],['goat','sheep'],['star','moon']];
@@ -503,17 +507,17 @@ function ask(){
   let cards;
   if(q.type==='hear'){
     const xs=shuffle([it,...others(it,ITEMS.filter(x=>x.kind===it.kind),2,hard)]);
-    stage.innerHTML='<button class="speaker" id="spk">🔊</button>';cards=xs.map((x,i)=>card(wc(xs),x.w,x.id,i));
+    stage.innerHTML='<button class="speaker" id="spk">🔊</button>';cards=xs.map((x,i)=>card(wc(xs),hw(x),x.id,i));
   }else if(q.type==='read'){
     const xs=shuffle([it,...others(it,ITEMS.filter(x=>x.kind===it.kind&&x.pic),2,hard,(x,out)=>!clash(x.w,it.w)&&!out.some(o=>clash(o.w,x.w)))]);
-    stage.innerHTML=again+`<div class="bigword${sz(it.w)}">${it.w}</div>`;cards=xs.map((x,i)=>card('pic',x.pic,x.id,i));
+    stage.innerHTML=again+`<div class="bigword${sz(it.w)}">${hw(it)}</div>`;cards=xs.map((x,i)=>card('pic',x.pic,x.id,i));
   }else if(q.type==='build'){
     stage.innerHTML=again+`<div class="bigpic">${it.pic}</div><div class="slots" id="slots">${it.g.map(()=>'<div class="slot"></div>').join('')}</div>`;
     cards=tiles(it).map((x,i)=>card('tile',x,x,i));
   }else if(q.type==='fill'){
     const t=it.g[it.t],cls=VDG.includes(t)?VDG:DG.filter(d=>!VDG.includes(d));
     const xs=shuffle([t,...shuffle(cls.filter(d=>d!==t&&!it.g.includes(d))).slice(0,2)]);
-    stage.innerHTML=again+(it.pic?`<div class="bigpic">${it.pic}</div>`:'')+`<div class="bigword${sz(it.w+'x')}">${it.g.map((x,i)=>i===it.t?'<span class="gap" id="gap">&nbsp;</span>':x).join('')}</div>`;
+    stage.innerHTML=again+(it.pic?`<div class="bigpic">${it.pic}</div>`:'')+`<div class="bigword${sz(it.w+'x')}">${it.g.map((x,i)=>i===it.t?'<span class="gap" id="gap">&nbsp;</span>':DG.includes(x)?`<span class="hl">${x}</span>`:x).join('')}</div>`;
     cards=xs.map((x,i)=>card('word',x,x,i));
   }else{
     q.ex=pick(it.ex);
@@ -535,7 +539,7 @@ $('#choices').addEventListener('click',ev=>{
   if(q.type==='build'){
     // any letter can be placed in the next empty box; tapping a box takes its letter back (see the #stage handler)
     const sl=[...$('#slots').children],i=sl.findIndex(s=>!s.tile);if(i<0)return;
-    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);
+    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);if(DG.includes(v))speak(['d_'+v]);
     sl.forEach(x=>x.classList.remove('bad'));
     if(sl.every(x=>x.tile)){
       if(sl.every((x,j)=>x.textContent===it.g[j])){$('#slots').classList.add('done');win(s)}
@@ -552,7 +556,7 @@ function miss(btn,v){
   if(q.type==='hear')speak(['that_says',aud(BY[v].w),...promptIds()]);
   else if(q.type==='read')speak(['oops_'+rndi(1,4),'try_again']);
   else if(q.type==='build')speak(['oops_'+rndi(1,4),'try_again']);
-  else speak(['oops_'+rndi(1,4),...promptIds()]);
+  else speak([...(q.type==='fill'?['d_'+v]:[]),'oops_'+rndi(1,4),...promptIds()]);   // a tapped digraph says its sound
 }
 async function win(el){
   const g=G,q=g.cur,it=q.it,rec=record(it.id),old=rec.l;g.locked=true;
@@ -564,12 +568,12 @@ async function win(el){
   document.querySelectorAll('.card').forEach(b=>b!==el&&b.classList.add('dim'));
   if(q.type==='fill'){el.classList.add('yes');const gp=$('#gap');gp.textContent=it.g[it.t];gp.classList.add('got')}
   else if(q.type!=='build'){el.classList.add('yes');   // show what the word means
-    $('#stage').innerHTML=`<div class="reveal">${pic?`<span class="bigpic">${pic}</span>`:''}<span class="bigword${sz(word+'xx')}">${q.type==='first'?`<span class="hl">${word[0]}</span>${word.slice(1)}`:word}</span></div>`}
+    $('#stage').innerHTML=`<div class="reveal">${pic?`<span class="bigpic">${pic}</span>`:''}<span class="bigword${sz(word+'xx')}">${q.type==='first'?`<span class="hl">${word[0]}</span>${word.slice(1)}`:hw(it)}</span></div>`}
   $('#stars').textContent=D.stars;
   const h=$('#hero');h.style.left=`calc((100% - 2.1em) * ${(g.i+1)/g.q.length})`;h.classList.remove('hop');void h.offsetWidth;h.classList.add('hop');
   const r=el.getBoundingClientRect(),pi=rndi(1,PRAISE.length-1);
   celebrate(tier,{x:r.left+r.width/2,y:r.top+r.height/2,text:learned?'You learned it!':PRAISE[pi],dur:1700});
-  await Promise.all([Promise.race([speak([aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
+  await Promise.all([Promise.race([speak([...(it.kind==='dig'?['d_'+it.g[it.t]]:[]),aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
   if(G!==g)return;
   g.i++;g.i>=g.q.length?finish():ask();
 }
@@ -592,10 +596,11 @@ function progress(){
   const list=pool(PT),seen=list.filter(it=>D.words[it.id]).length,k=known(PT);
   document.querySelectorAll('#ptabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===PT));
   $('#psummary').textContent=`📖 ${k} of ${list.length} known · ${seen-k} in progress · ${D.missions} missions played`;
-  $('#wordgrid').innerHTML=list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
+  $('#wordgrid').innerHTML=(PT==='dig'?DG.map(d=>`<button class="wchip dg" data-d="${d}">🔊 ${d}</button>`).join('')+'<div style="flex-basis:100%"></div>':'')+list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
 }
 $('#ptabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;PT=b.dataset.t;$('#detail').textContent='';progress()});
 $('#wordgrid').addEventListener('click',ev=>{
+  const dg=ev.target.closest('[data-d]');if(dg){speak(['d_'+dg.dataset.d]);$('#detail').textContent=`The sound recording for “${dg.dataset.d}”`;return}
   const b=ev.target.closest('[data-id]');if(!b)return;const it=BY[b.dataset.id],r=D.words[it.id];
   speak(it.kind==='letter'?it.ex.map(e=>aud(e[0])):[aud(it.w)]);
   $('#detail').textContent=(it.kind==='letter'?`“${it.w}” (${it.ex.map(e=>e[0]).join(', ')})`:`“${it.w}”`)+' — '+(!r?'not met yet':`step ${r.l} of 3 · asked ${r.n} times · right first try ${r.c} · wrong taps ${r.w}`)+(it.kind==='cvc'||it.kind==='dig'?(it.pic?'':' · listen-only word (no picture)'):'');

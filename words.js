@@ -11,6 +11,7 @@ window.RR_DATA = {
     "clock":["c l o ck","🕰️"],"shell":["sh e ll","🐚"],
     "moth":["m o th",""],"thin":["th i n",""],"kick":["k i ck",""],"neck":["n e ck",""],"back":["b a ck",""],"wing":["w i ng",""],"long":["l o ng",""],"quack":["qu a ck",""],"whip":["wh i p",""],
     "zoo":["z oo",""],"roof":["r oo f",""],"farm":["f ar m",""],"tail":["t ai l",""]},
+  "digraphSounds": {"sh":"Shhh.","ch":"Chuh.","th":"Thhh.","ck":"Kuh.","ng":"Nnng.","qu":"Kwuh.","wh":"Wuh.","ee":"Eee.","oo":"Ooo.","ar":"Arr.","or":"Or.","ai":"A.","oa":"Oh."},
   "sight": ["I","a","the","and","to","is","it","in","at","on","he","she","we","me","be","my","you","was","are","of","for","said","they","go","no","so","see","like","look","can","up","am","went","have","do","this","that","with","come","here","play","his","her","all"],
   "letters": {
     "s":{"sun":"☀️","snake":"🐍","spider":"🕷️"},"a":{"apple":"🍎","ant":"🐜","astronaut":"👨‍🚀"},"t":{"tiger":"🐯","truck":"🚚","tractor":"🚜"},"p":{"pig":"🐷","penguin":"🐧","pizza":"🍕"},
