@@ -9,7 +9,7 @@ Usage:  python3 tools/make_audio.py            # make any missing clips
 The API key is read from the FAL_AI_KEY (or FAL_KEY) environment variable, or from ~/.env.
 Clips are written to audio/<id>.mp3. Existing files are skipped.
 """
-import concurrent.futures, json, os, re, subprocess, sys, tempfile, urllib.request
+import concurrent.futures, json, os, re, struct, subprocess, sys, tempfile, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "audio")
@@ -120,6 +120,60 @@ def make_cut(cid, spec, force):
           " ".join("%s@%.2f" % (c, t) for c, t in zip(ts["characters"], st) if c.strip())))
 
 
+# One sound per letter, cut automatically from the start of a slowly spoken word.
+# kind "c" (consonant): keep from the start of speech up to where the vowel takes over (sun -> sss).
+# kind "v" (vowel): the word starts with the vowel and it is followed by a stop (odd, up); keep the vowel only.
+def loudness(path):
+    raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-f", "s16le", "-ac", "1", "-ar", "16000", "-"], capture_output=True).stdout
+    x = struct.unpack("<%dh" % (len(raw) // 2), raw)
+    return [(sum(v * v for v in x[i:i + 160]) / 160.0) ** 0.5 for i in range(0, len(x) - 160, 160)]   # one value per 10 ms
+
+
+def cut_clip(src, a, b, path):
+    fade = min(0.03, (b - a) / 3)
+    base = "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.008,afade=t=out:st=%.3f:d=%.3f" % (a, b, b - a - fade, fade)
+    err = subprocess.run(["ffmpeg", "-hide_banner", "-i", src, "-af", base + ",volumedetect", "-f", "null", "-"], capture_output=True, text=True).stderr
+    gain = min(30.0, -1.5 - float(re.search(r"max_volume: (-?[\d.]+) dB", err).group(1)))
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-af", base + ",volume=%.1fdB" % gain, "-codec:a", "libmp3lame", "-q:a", "3", path], check=True)
+
+
+def make_letter(item):
+    letter, spec, force = item
+    path = os.path.join(OUT, "l_" + letter + ".mp3")
+    if os.path.exists(path) and not force:
+        return None
+    text, kind = spec[:2]
+    kind_x = kind == "x"
+    kind = "c" if kind_x else kind
+    res = post(TTS, {"text": text, "voice": VOICE, "stability": 0.7, "similarity_boost": 0.8, "speed": 0.75, "timestamps": True, "previous_text": CONTEXT})
+    ts = res["timestamps"][0]
+    first = next(i for i, c in enumerate(ts["characters"]) if c.strip())
+    second = int(ts["character_start_times_seconds"][first + 1] * 100)
+    with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
+        with urllib.request.urlopen(res["audio"]["url"], timeout=120) as r:
+            tmp.write(r.read())
+        tmp.flush()
+        e = loudness(tmp.name)
+        mx = max(e)
+        onset = next(k for k, v in enumerate(e) if v > (0.015 if kind == "c" else 0.06) * mx)   # quiet hisses like f still count
+        if len(spec) > 3:                       # hand-set window in 10 ms steps
+            a, b = spec[2], spec[3]
+        elif kind == "c":
+            end = next((k for k in range(onset + 1, min(second + 3, len(e))) if e[k] >= 0.5 * mx), min(second, len(e) - 1))
+            if end - onset < 5:                 # a sound as loud as the vowel (m, n, z): trust the letter timing instead
+                end = min(max(second, onset + 6), len(e) - 1)
+            if kind_x:                          # b, d, g: keep the little pop that follows the closure
+                end = min(end + 2, len(e) - 1)
+            a, b = max(0, onset - 2), max(end, onset + 4)
+        else:
+            peak = max(range(onset, min(onset + 40, len(e))), key=lambda k: e[k])
+            end = next((k for k in range(peak, len(e)) if e[k] < 0.25 * mx), len(e) - 1)
+            a, b = max(0, onset - 1), min(end, onset + 20)
+        cut_clip(tmp.name, a / 100.0, b / 100.0, path)
+    bars = "".join(str(min(9, int(9 * v / mx))) for v in e[:70])
+    return "l_%s from %-5s keep %3d-%3d ms  %s[%s]%s" % (letter, text, a * 10, b * 10, bars[:a], bars[a:b], bars[b:])
+
+
 # Single short words are sometimes read as if they were another language ("pan", "zebra", "I").
 # --fix tries stronger hints that the word is English and keeps the first take that transcribes back correctly.
 TURBO = "https://fal.run/fal-ai/elevenlabs/tts/turbo-v2.5"
@@ -172,6 +226,10 @@ def main():
                 print(cid, status)
             if url:
                 urls[cid] = url
+    with concurrent.futures.ThreadPoolExecutor(6) as ex:
+        for line in ex.map(make_letter, [(c, spec, c in redo or "l_" + c in redo) for c, spec in R.get("letterCuts", {}).items()]):
+            if line:
+                print(line)
     for dg, spec in R.get("digraphCuts", {}).items():
         make_cut("d_" + dg, spec, dg in redo or "d_" + dg in redo)
     print("clips on disk:", len([f for f in os.listdir(OUT) if f.endswith(".mp3")]), "of", len(items))

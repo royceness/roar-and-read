@@ -199,7 +199,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
     <div class="legend small"><span><i class="lv-"></i>Not met yet</span><span><i class="lv0"></i>Just met</span><span><i class="lv1"></i>Learning</span><span><i class="lv2"></i>Nearly there</span><span><i class="lv3"></i>Knows it</span><span>✗ = wrong taps</span></div>
     <p class="small" id="detail" style="min-height:1.5em;margin:10px 0 0"></p></div>
   <div class="panel"><h3>The kinds of question</h3>
-    <p class="small" style="margin:0">🔤 <b>First sound</b>: hear a word, tap the letter it starts with. &nbsp;🔊 <b>Hear it</b>: hear a word, tap the written word (sight words are always this kind). &nbsp;📖 <b>Read it</b>: read a word silently and tap its picture. &nbsp;🧩 <b>Missing letters</b>: hear a word and choose the missing digraph (sh, ch, ee…); each choice says its sound when tapped. Digraphs are shown in a highlight colour and their sound is played before the word after a right answer. &nbsp;🔨 <b>Build it</b>: see a picture, hear the word and tap the letters in order; nothing is marked right or wrong until every box is full; then a wrong word turns red and he taps letters to take them back. Newer items get the easier kinds, and look-alike choices come in as an item moves up.</p></div>
+    <p class="small" style="margin:0">🔤 <b>First sound</b>: hear a word, tap the letter it starts with; each letter says its sound when tapped. &nbsp;🔊 <b>Hear it</b>: hear a word, tap the written word; a wrong word is read out before he tries again (sight words are always this kind). &nbsp;📖 <b>Read it</b>: read a word silently and tap its picture. &nbsp;🧩 <b>Missing letters</b>: hear a word and choose the missing digraph (sh, ch, ee…); each choice says its sound when tapped. Digraphs are shown in a highlight colour and their sound is played before the word after a right answer. &nbsp;🔨 <b>Build it</b>: see a picture, hear the word and tap the letters in order; nothing is marked right or wrong until every box is full; then a wrong word turns red and he taps letters to take them back. Newer items get the easier kinds, and look-alike choices come in as an item moves up.</p></div>
   <div class="panel"><button class="pill danger" id="reset">Erase all progress</button></div>
 </section>
 
@@ -554,8 +554,11 @@ function miss(btn,v){
   const q=G.cur,rec=record(q.it.id);
   if(q.first){q.first=false;rec.l=Math.max(0,rec.l-1);G.streak=0}
   rec.w++;rec.last=Date.now();save();buzz();
-  if(q.type==='hear')speak(['that_says',aud(BY[v].w),...promptIds()]);
-  else if(q.type==='read')speak(['oops_'+rndi(1,4),'try_again']);
+  const oops='oops_'+rndi(1,4);
+  // whatever was tapped is said aloud first: the word, the picture's word, the letter's sound or the digraph's sound
+  if(q.type==='hear')speak([aud(BY[v].w),oops,...promptIds()]);
+  else if(q.type==='read')speak([aud(BY[v].w),oops,'try_again']);
+  else if(q.type==='first')speak(['l_'+v,oops,...promptIds()]);
   else if(q.type==='build')speak(['oops_'+rndi(1,4),'try_again']);
   else speak([...(q.type==='fill'?['d_'+v]:[]),'oops_'+rndi(1,4),...promptIds()]);   // a tapped digraph says its sound
 }
@@ -574,7 +577,7 @@ async function win(el){
   const h=$('#hero');h.style.left=`calc((100% - 2.1em) * ${(g.i+1)/g.q.length})`;h.classList.remove('hop');void h.offsetWidth;h.classList.add('hop');
   const r=el.getBoundingClientRect(),pi=rndi(1,PRAISE.length-1);
   celebrate(tier,{x:r.left+r.width/2,y:r.top+r.height/2,text:learned?'You learned it!':PRAISE[pi],dur:1700});
-  await Promise.all([Promise.race([speak([...(it.kind==='dig'?['d_'+it.snd]:[]),aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
+  await Promise.all([Promise.race([speak([...(it.kind==='dig'?['d_'+it.snd]:q.type==='first'?['l_'+it.w]:[]),aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
   if(G!==g)return;
   g.i++;g.i>=g.q.length?finish():ask();
 }
@@ -603,7 +606,7 @@ $('#ptabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if
 $('#wordgrid').addEventListener('click',ev=>{
   const dg=ev.target.closest('[data-d]');if(dg){speak(['d_'+dg.dataset.d]);$('#detail').textContent=`The sound recording for “${dg.dataset.d.slice(0,2)}”`;return}
   const b=ev.target.closest('[data-id]');if(!b)return;const it=BY[b.dataset.id],r=D.words[it.id];
-  speak(it.kind==='letter'?it.ex.map(e=>aud(e[0])):[aud(it.w)]);
+  speak(it.kind==='letter'?['l_'+it.w,...it.ex.map(e=>aud(e[0]))]:[aud(it.w)]);
   $('#detail').textContent=(it.kind==='letter'?`“${it.w}” (${it.ex.map(e=>e[0]).join(', ')})`:`“${it.w}”`)+' — '+(!r?'not met yet':`step ${r.l} of 3 · asked ${r.n} times · right first try ${r.c} · wrong taps ${r.w}`)+(it.kind==='cvc'||it.kind==='dig'?(it.pic?'':' · listen-only word (no picture)'):'');
 });
 let resetArm=0;
