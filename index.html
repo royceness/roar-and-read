@@ -157,6 +157,16 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 @keyframes giant{0%{transform:scale(0) rotate(-30deg);opacity:0}35%{transform:scale(1.1) rotate(8deg);opacity:.95}70%{transform:scale(1) rotate(-4deg);opacity:.9}100%{transform:scale(1.6);opacity:0}}
 .flash{position:fixed;inset:0;pointer-events:none;z-index:18;background:radial-gradient(circle,#fff,var(--yellow) 40%,var(--orange));animation:flash .9s ease-out both}
 @keyframes flash{0%{opacity:0}30%{opacity:.3}100%{opacity:0}}
+.guard{position:fixed;inset:0;z-index:60;background:rgba(20,10,40,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+.guard[hidden]{display:none}
+.gbox{background:#fff;color:#2b2140;border-radius:24px;padding:22px;width:min(440px,100%);font-weight:700}
+.gbox h3{margin:0 0 8px;font-size:24px}
+.gbox label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0;font-size:18px}
+.gbox input{width:6.5em;font:inherit;font-size:20px;padding:.35em .5em;border:2px solid #b9aed0;border-radius:12px;text-align:center;user-select:text;-webkit-user-select:text}
+#gerr{color:#c2134a;min-height:1.4em;margin:0}
+.grow{display:flex;gap:12px;justify-content:flex-end;margin-top:8px}
+.grow button{border-radius:99px;padding:.6em 1.2em;font-size:17px;background:#ece8f4;color:#2b2140}
+.grow #gok{background:#c2134a;color:#fff}
 </style>
 </head>
 <body>
@@ -200,7 +210,12 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
     <p class="small" id="detail" style="min-height:1.5em;margin:10px 0 0"></p></div>
   <div class="panel"><h3>The kinds of question</h3>
     <p class="small" style="margin:0">🔤 <b>First sound</b>: hear a word, tap the letter it starts with; each letter says its sound when tapped. &nbsp;🔊 <b>Hear it</b>: hear a word, tap the written word; a wrong word is read out before he tries again (sight words are always this kind). &nbsp;📖 <b>Read it</b>: read a word silently and tap its picture. &nbsp;🧩 <b>Missing letters</b>: hear a word and choose the missing digraph (sh, ch, ee…); each choice says its sound when tapped. Digraphs are shown in a highlight colour and their sound is played before the word after a right answer. &nbsp;🔨 <b>Build it</b>: see a picture, hear the word and tap the letters in order; nothing is marked right or wrong until every box is full; then a wrong word turns red and he taps letters to take them back. Newer items get the easier kinds, and look-alike choices come in as an item moves up.</p></div>
-  <div class="panel"><button class="pill danger" id="reset">Erase all progress</button></div>
+  <div class="panel"><h3>Practice log</h3>
+    <p class="small" id="loginfo" style="margin:0 0 10px"></p>
+    <div class="row" style="justify-content:flex-start"><button class="pill" id="copy14">📋 Copy last 14 days</button><button class="pill" id="copyall">📋 Copy everything</button></div>
+    <p class="small" id="copymsg" style="min-height:1.4em;margin:8px 0 0"></p>
+    <textarea id="logbox" readonly style="display:none;width:100%;height:160px;font:12px ui-monospace,monospace;user-select:text;-webkit-user-select:text"></textarea></div>
+  <div class="panel"><button class="pill danger" id="reset">Erase all progress and the log</button></div>
 </section>
 
 <section id="book" class="screen scroll">
@@ -208,6 +223,14 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
   <div class="book" id="bookgrid"></div>
 </section>
 
+<div id="guard" class="guard" hidden><div class="gbox">
+  <h3>Erase everything?</h3>
+  <p class="small">This deletes all progress and the practice log on this device and cannot be undone. Grown-ups only: answer both to continue.</p>
+  <label>Your year of birth <input id="gyear" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4"></label>
+  <label><span id="gq"></span> = <input id="gans" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="4"></label>
+  <p class="small" id="gerr"></p>
+  <div class="grow"><button id="gcancel">Cancel</button><button id="gok">Erase everything</button></div>
+</div></div>
 <canvas id="fx"></canvas>
 
 <script src="words.js"></script>
@@ -250,6 +273,26 @@ let D=blank();
 try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.words)D=Object.assign(blank(),d)}catch(e){}
 if(D.mode!=='all'&&!KINDS[D.mode])D.mode='all';
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}};
+
+/* ---------- play log: one row per answer, kept on this device only ---------- */
+const LOGKEY='roarRead.log.v1',LOGMAX=6000;
+let LOG=[];
+try{const l=JSON.parse(localStorage.getItem(LOGKEY));if(Array.isArray(l))LOG=l}catch(e){}
+function logRow(r){
+  LOG.push(r);if(LOG.length>LOGMAX)LOG=LOG.slice(-LOGMAX);
+  try{localStorage.setItem(LOGKEY,JSON.stringify(LOG))}
+  catch(e){LOG=LOG.slice(-Math.floor(LOG.length/2));try{localStorage.setItem(LOGKEY,JSON.stringify(LOG))}catch(e2){}}   // storage full: keep the newer half
+}
+const stamp=t=>{const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`};
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:0;left:0;opacity:0;user-select:text;-webkit-user-select:text';document.body.appendChild(ta);ta.focus();ta.select();const ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}
+}
+async function copyLog(days){
+  const since=days?Date.now()-days*864e5:0,rows=LOG.filter(r=>r[0]>=since),t=exportLog(rows),ok=await copyText(t),box=$('#logbox');
+  $('#copymsg').textContent=ok?`Copied ${rows.length} answers (${Math.max(1,Math.round(t.length/1024))} KB). Paste it into Claude or another assistant.`:'Could not copy automatically. The log is in the box below: tap in it, Select All, then Copy.';
+  box.style.display=ok?'none':'block';box.value=ok?'':t;
+}
 const lvl=id=>D.words[id]?D.words[id].l:0;
 const pool=m=>ITEMS.filter(it=>m==='all'||it.kind===m);
 const known=m=>pool(m).filter(it=>lvl(it.id)>=3).length;
@@ -487,7 +530,7 @@ let G=null;
 function start(){
   ac();['find','which_pic','build','that_says','try_again','first_q','missing'].forEach(load);
   const hero=pick(HEROES);
-  G={q:buildMission(),i:0,first:0,streak:0,hero,locked:true};
+  G={q:buildMission(),i:0,first:0,streak:0,hero,locked:true,n:D.missions+1};
   G.q.forEach(q=>{if(q.it.kind!=='letter')load(aud(q.it.w))});
   $('#goal').textContent=hero.g;
   const h=$('#hero');h.innerHTML=`<span${hero.f?' style="transform:scaleX(-1)"':''}>${hero.e}</span>`;
@@ -501,7 +544,7 @@ function promptIds(){
 const prompt=()=>speak(promptIds());
 function ask(){
   const q=G.q[G.i],it=q.it,hard=lvl(it.id)>=1,stage=$('#stage'),box=$('#choices'),cols=shuffle(['#4de3ff','#8dff6b','#ffe14d','#ff9f1c','#ff7ad9','#a98bff']);
-  G.cur=q;q.first=true;q.pos=0;
+  G.cur=q;q.first=true;q.pos=0;q.t0=performance.now();q.t1=0;q.wrong=[];q.replays=0;q.lb=lvl(it.id);
   const card=(cls,txt,val,i)=>`<button class="card ${cls}" data-v="${val}" style="--c:${cols[i%6]}">${txt}</button>`;
   const again='<button class="round" id="again">🔊</button>';
   const wc=xs=>xs.some(x=>x.w.length>=5)?'word sm':xs.some(x=>x.w.length>=4)?'word md':'word';
@@ -525,14 +568,14 @@ function ask(){
     stage.innerHTML=again+(q.ex[1]?`<div class="bigpic">${q.ex[1]}</div>`:'<button class="speaker" id="spk">🔊</button>');
     cards=shuffle([it.w,...letterOthers(it.w,hard)]).map((x,i)=>card('word',x,x,i));
   }
-  box.style.gridTemplateColumns=`repeat(${cards.length},1fr)`;box.innerHTML=cards.join('');
+  box.style.gridTemplateColumns=`repeat(${cards.length},1fr)`;box.innerHTML=cards.join('');q.choices=[...box.children].map(c=>c.textContent).join('|');
   G.locked=false;prompt();
 }
 $('#stage').addEventListener('click',ev=>{
   if(!G||G.locked)return;
   const s=ev.target.closest('.slot');
   if(s&&s.tile){s.tile.classList.remove('used');s.tile=null;s.textContent='';s.classList.remove('full','bad');note(260,0,.12,'triangle',.07);return}
-  if(ev.target.closest('#spk,#again'))prompt();
+  if(ev.target.closest('#spk,#again')){G.cur.replays++;prompt()}
 });
 $('#choices').addEventListener('click',ev=>{
   const b=ev.target.closest('.card');if(!b||!G||G.locked||b.classList.contains('no')||b.classList.contains('used'))return;
@@ -544,7 +587,7 @@ $('#choices').addEventListener('click',ev=>{
     sl.forEach(x=>x.classList.remove('bad'));
     if(sl.every(x=>x.tile)){
       if(sl.every((x,j)=>x.textContent===it.g[j])){$('#slots').classList.add('done');win(s)}
-      else{sl.forEach(x=>x.classList.add('bad'));miss(b)}   // the whole word is marked wrong, with no hint about which letter
+      else{sl.forEach(x=>x.classList.add('bad'));miss(b,sl.map(x=>x.textContent).join(''))}   // the whole word is marked wrong, with no hint about which letter
     }
   }else if(v===(q.type==='fill'?it.g[it.t]:q.type==='first'?it.w:it.id))win(b);
   else{b.classList.add('no');miss(b,v)}
@@ -554,6 +597,7 @@ function miss(btn,v){
   const q=G.cur,rec=record(q.it.id);
   if(q.first){q.first=false;rec.l=Math.max(0,rec.l-1);G.streak=0}
   rec.w++;rec.last=Date.now();save();buzz();
+  if(!q.t1)q.t1=performance.now();q.wrong.push(q.type==='hear'||q.type==='read'?BY[v].w:v);
   const oops='oops_'+rndi(1,4);
   // whatever was tapped is said aloud first: the word, the picture's word, the letter's sound or the digraph's sound
   if(q.type==='hear')speak([aud(BY[v].w),oops,...promptIds()]);
@@ -566,6 +610,8 @@ async function win(el){
   const g=G,q=g.cur,it=q.it,rec=record(it.id),old=rec.l;g.locked=true;
   rec.n++;rec.last=Date.now();
   if(q.first){rec.c++;rec.l=Math.min(3,rec.l+1);g.first++;g.streak++;D.stars++}
+  const tn=performance.now(),secs=t=>Math.round((t-q.t0)/100)/10;
+  logRow([Date.now(),g.n,D.mode,it.kind,it.w,q.type,q.ex?q.ex[0]:'',q.first?1:0,q.wrong.join('|'),secs(q.t1||tn),secs(tn),q.replays,q.lb,rec.l,q.choices]);
   save();
   const learned=rec.l===3&&old<3,word=q.ex?q.ex[0]:it.w,pic=q.ex?q.ex[1]:it.pic;
   let tier=q.first?2+(g.streak>=3?1:0):1;if(learned)tier=4;
@@ -595,11 +641,38 @@ async function finish(){
 }
 
 /* ================= grown-ups ================= */
+
+const LOGNOTE='Every question is recorded on this device only: what was asked, the choices, every wrong tap, how long it took and the step before and after. Copy the log and paste it into Claude or another assistant to look for patterns.';
+function exportLog(rows){
+  const state=Object.keys(KINDS).map(k=>{const l=pool(k),seen=l.filter(it=>D.words[it.id]).length,n=known(k);return `#   ${KINDS[k].replace(/^\S+ /,'')}: ${n} known, ${seen-n} in progress, ${l.length-seen} not met (of ${l.length})`});
+  const hard=ITEMS.filter(it=>D.words[it.id]&&D.words[it.id].w>0).sort((a,b)=>D.words[b.id].w-D.words[a.id].w).slice(0,25).map(it=>{const r=D.words[it.id];return `${it.w} [${it.kind}] (wrong taps ${r.w}, first-try right ${r.c} of ${r.n}, step ${r.l})`});
+  return [
+    `# Roar & Read practice log. Exported ${stamp(Date.now())}. ${rows.length} questions`+(rows.length?`, ${stamp(rows[0][0])} to ${stamp(rows[rows.length-1][0])}.`:'.'),
+    '# A young child (pre-reader to early reader) plays missions of 6 questions. There is no timer and every question continues until it is answered correctly.',
+    '# Columns:',
+    '#   time = local time the question was finished; mission = mission number; mode = what was chosen on the home screen (letter, cvc, dig, sight or all = a mix)',
+    '#   group = letter (first sounds), cvc (three-letter short-vowel words), dig (words with a digraph: sh ch th ck ng qu wh ee oo ar or ai oa) or sight (high-frequency words)',
+    '#   item = the letter or word; example_word = for letter questions, the spoken word whose first letter was asked',
+    '#   question_type: first = hear a word and tap the letter it starts with; hear = hear a word and tap the written word;',
+    '#     read = read a written word (not spoken) and tap its picture; fill = hear a word and choose its missing digraph; build = see a picture, hear the word and tap letter tiles in order',
+    '#   first_try = 1 if the first answer was right; wrong_taps = everything tapped wrongly, in order, separated by | (for build: each wrong spelling tried)',
+    '#   seconds_to_first_tap and seconds_to_correct are measured from the question appearing and include listening to the spoken prompt (about 2 seconds)',
+    '#   audio_replays = times the child tapped the speaker to hear the prompt again',
+    '#   step_before / step_after = 0 to 3. Right first try raises it by one, a wrong first answer lowers it by one, 3 = known. Higher steps get harder question types and look-alike choices',
+    '#   choices = what was offered, in screen order, separated by | (pictures appear as emoji; for build these are the letter tiles)',
+    '# Current state on this device:',...state,
+    `#   Missions played: ${D.missions}. Most wrong taps: ${hard.join('; ')||'none yet'}`,
+    'time,mission,mode,group,item,question_type,example_word,first_try,wrong_taps,seconds_to_first_tap,seconds_to_correct,audio_replays,step_before,step_after,choices',
+    ...rows.map(r=>[stamp(r[0]),...r.slice(1)].join(','))].join('\n');
+}
+function logInfo(){$('#loginfo').textContent=(LOG.length?`${LOG.length} answers logged since ${stamp(LOG[0][0]).slice(0,10)}. `:'Nothing logged yet. ')+LOGNOTE;$('#copymsg').textContent='';$('#logbox').style.display='none'}
+$('#copy14').onclick=()=>copyLog(14);$('#copyall').onclick=()=>copyLog(0);
 let PT='cvc';
 function progress(){
   const list=pool(PT),seen=list.filter(it=>D.words[it.id]).length,k=known(PT);
   document.querySelectorAll('#ptabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===PT));
   $('#psummary').textContent=`📖 ${k} of ${list.length} known · ${seen-k} in progress · ${D.missions} missions played`;
+  logInfo();
   $('#wordgrid').innerHTML=(PT==='dig'?['sh','ch','th','th2',...DG.slice(3)].map(d=>`<button class="wchip dg" data-d="${d}">🔊 ${d==='th'?'th (thin)':d==='th2'?'th (this)':d}</button>`).join('')+'<div style="flex-basis:100%"></div>':'')+list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
 }
 $('#ptabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;PT=b.dataset.t;$('#detail').textContent='';progress()});
@@ -609,11 +682,17 @@ $('#wordgrid').addEventListener('click',ev=>{
   speak(it.kind==='letter'?['l_'+it.w,...it.ex.map(e=>aud(e[0]))]:[aud(it.w)]);
   $('#detail').textContent=(it.kind==='letter'?`“${it.w}” (${it.ex.map(e=>e[0]).join(', ')})`:`“${it.w}”`)+' — '+(!r?'not met yet':`step ${r.l} of 3 · asked ${r.n} times · right first try ${r.c} · wrong taps ${r.w}`)+(it.kind==='cvc'||it.kind==='dig'?(it.pic?'':' · listen-only word (no picture)'):'');
 });
-let resetArm=0;
-$('#reset').addEventListener('click',ev=>{
-  if(Date.now()-resetArm<4000){D=Object.assign(blank(),{mode:D.mode});save();resetArm=0;ev.target.textContent='Erase all progress';$('#detail').textContent='';progress()}
-  else{resetArm=Date.now();ev.target.textContent='Tap again to erase everything';setTimeout(()=>{if(resetArm){resetArm=0;ev.target.textContent='Erase all progress'}},4000)}
-});
+function eraseAll(){D=Object.assign(blank(),{mode:D.mode});save();LOG=[];try{localStorage.removeItem(LOGKEY)}catch(e){}$('#detail').textContent='';progress()}
+// Erasing needs a grown-up: a plausible adult birth year and a sum a young child can't do in their head.
+let guardAns=0;
+function guardQuestion(){const a=rndi(13,29),b=rndi(6,9),c=rndi(11,49);guardAns=a*b-c;$('#gq').textContent=`${a} × ${b} − ${c}`;$('#gans').value=''}
+$('#reset').onclick=()=>{guardQuestion();$('#gyear').value='';$('#gerr').textContent='';$('#guard').hidden=false};
+$('#gcancel').onclick=()=>{$('#guard').hidden=true};
+$('#gok').onclick=()=>{
+  const y=$('#gyear').value.trim(),ans=$('#gans').value.trim(),age=new Date().getFullYear()-(+y);
+  if(!/^\d{4}$/.test(y)||!(age>10&&age<80)||ans===''||+ans!==guardAns){$('#gerr').textContent='That doesn\'t match, so nothing was erased. Here is a new question.';guardQuestion();return}
+  $('#guard').hidden=true;eraseAll();
+};
 function book(){$('#bookgrid').innerHTML=STICKERS.map(s=>D.stickers.includes(s)?`<div>${s}</div>`:'<div class="q">?</div>').join('')}
 
 /* ================= wiring ================= */
