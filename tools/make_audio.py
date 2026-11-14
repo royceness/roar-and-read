@@ -165,7 +165,7 @@ def make_letter(item):
             if end - onset < 5:                 # a sound as loud as the vowel (m, n, z): trust the letter timing instead
                 end = min(max(second, onset + 6), len(e) - 1)
             if kind_x:                          # b, d, g: keep the pop and about 60 ms of the vowel, faded out
-                end = min(end + 6, len(e) - 1)
+                end = min(end + (spec[2] if len(spec) == 3 else 6), len(e) - 1)   # optional third value: how many 10 ms steps of vowel to keep
             if kind_s:                          # held sounds: go by the timing of the first vowel letter, plus a short fade into it
                 vowel = next(i for i, c in enumerate(ts["characters"]) if i > first and c.lower() in "aeiou")
                 end = min(int(ts["character_start_times_seconds"][vowel] * 100) + 3, len(e) - 1)
