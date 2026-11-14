@@ -122,6 +122,8 @@ def make_cut(cid, spec, force):
 
 # One sound per letter, cut automatically from the start of a slowly spoken word.
 # kind "c" (consonant): keep from the start of speech up to where the vowel takes over (sun -> sss).
+# kind "s" (stretched): the letter is repeated in the text (Mmmmmap) so the voice holds it; keep up to just past the first vowel letter.
+# kind "x" (b, d, g): keep the pop and a short trace of the vowel, since these can't be heard without one.
 # kind "v" (vowel): the word starts with the vowel and it is followed by a stop (odd, up); keep the vowel only.
 def loudness(path):
     raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", path, "-f", "s16le", "-ac", "1", "-ar", "16000", "-"], capture_output=True).stdout
@@ -130,7 +132,7 @@ def loudness(path):
 
 
 def cut_clip(src, a, b, path):
-    fade = min(0.03, (b - a) / 3)
+    fade = min(0.045, (b - a) / 3)
     base = "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.008,afade=t=out:st=%.3f:d=%.3f" % (a, b, b - a - fade, fade)
     err = subprocess.run(["ffmpeg", "-hide_banner", "-i", src, "-af", base + ",volumedetect", "-f", "null", "-"], capture_output=True, text=True).stderr
     gain = min(30.0, -1.5 - float(re.search(r"max_volume: (-?[\d.]+) dB", err).group(1)))
@@ -143,8 +145,8 @@ def make_letter(item):
     if os.path.exists(path) and not force:
         return None
     text, kind = spec[:2]
-    kind_x = kind == "x"
-    kind = "c" if kind_x else kind
+    kind_x, kind_s = kind == "x", kind == "s"
+    kind = "c" if kind_x or kind_s else kind
     res = post(TTS, {"text": text, "voice": VOICE, "stability": 0.7, "similarity_boost": 0.8, "speed": 0.75, "timestamps": True, "previous_text": CONTEXT})
     ts = res["timestamps"][0]
     first = next(i for i, c in enumerate(ts["characters"]) if c.strip())
@@ -162,8 +164,15 @@ def make_letter(item):
             end = next((k for k in range(onset + 1, min(second + 3, len(e))) if e[k] >= 0.5 * mx), min(second, len(e) - 1))
             if end - onset < 5:                 # a sound as loud as the vowel (m, n, z): trust the letter timing instead
                 end = min(max(second, onset + 6), len(e) - 1)
-            if kind_x:                          # b, d, g: keep the little pop that follows the closure
-                end = min(end + 2, len(e) - 1)
+            if kind_x:                          # b, d, g: keep the pop and about 60 ms of the vowel, faded out
+                end = min(end + 6, len(e) - 1)
+            if kind_s:                          # held sounds: go by the timing of the first vowel letter, plus a short fade into it
+                vowel = next(i for i, c in enumerate(ts["characters"]) if i > first and c.lower() in "aeiou")
+                end = min(int(ts["character_start_times_seconds"][vowel] * 100) + 3, len(e) - 1)
+                end = min(end, onset + 45)      # half a second of a held sound is plenty
+                gap = next((k for k in range(onset + 5, end) if max(e[k:k + 3]) < 0.02 * mx), None)
+                if gap:                         # the voice paused before the word itself: keep only the first part
+                    end = gap
             a, b = max(0, onset - 2), max(end, onset + 4)
         else:
             peak = max(range(onset, min(onset + 40, len(e))), key=lambda k: e[k])

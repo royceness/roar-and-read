@@ -13,9 +13,9 @@ window.RR_DATA = {
     "that":["th a t","","th2"],"them":["th e m","","th2"],"then":["th e n","","th2"],"zoo":["z oo",""],"roof":["r oo f",""],"farm":["f ar m",""],"tail":["t ai l",""]},
   "digraphSounds": {"sh":"Shhh.","wh":"Wuh.","ee":"Eee.","oo":"Ooo.","ar":"Arr.","or":"Or.","ai":"A.","oa":"Oh."},
   "digraphCuts": {"ch":["Rich.","ch","end"],"ck":["Duck.","ck","manual"],"ng":["Ringgg.","ng","manual"],"qu":["Quick.","qu","manual"],"th":["Moth.","th","manual"],"th2":["This.","th","manual"]},
-  "letterCuts": {"a":["Add.","v"],"b":["Bus.","x"],"c":["Cat.","c"],"d":["Dog.","x"],"e":["Egg.","v"],"f":["Fox.","c"],"g":["Gum.","x"],"h":["Hat.","c"],"i":["It.","v"],"j":["Jet.","c"],
-    "k":["Kid.","c"],"l":["Log.","c"],"m":["Map.","c"],"n":["Net.","c"],"o":["Odd.","v"],"p":["Pig.","c"],"r":["Rex.","c"],"s":["Sun.","c"],"t":["Ten.","c"],"u":["Up.","v"],
-    "v":["Van.","c"],"w":["Web.","c"],"y":["Yes.","c"],"z":["Zip.","c"]},
+  "letterCuts": {"a":["Add.","v"],"b":["Bus.","x"],"c":["Cat.","c"],"d":["Dog.","x"],"e":["Egg.","v"],"f":["Fox.","c"],"g":["Gum.","x"],"h":["Hhhhat.","s"],"i":["It.","v"],"j":["Jet.","c"],
+    "k":["Kid.","c"],"l":["Lllllog.","s"],"m":["Mmmmmap.","s"],"n":["Nnnnnet.","s"],"o":["Odd.","v"],"p":["Pig.","c"],"r":["Rrrrrex.","s"],"s":["Sun.","c"],"t":["Ten.","c"],"u":["Up.","v"],
+    "v":["Vvvvvan.","s"],"w":["Wwwwweb.","s"],"y":["Yyyyyes.","s"],"z":["Zzzzzip.","s"]},
   "sight": ["I","a","the","and","to","is","it","in","at","on","he","she","we","me","be","my","you","was","are","of","for","said","they","go","no","so","see","like","look","can","up","am","went","have","do","this","that","with","come","here","play","his","her","all"],
   "letters": {
     "s":{"sun":"☀️","snake":"🐍","spider":"🕷️"},"a":{"apple":"🍎","ant":"🐜","astronaut":"👨‍🚀"},"t":{"tiger":"🐯","truck":"🚚","tractor":"🚜"},"p":{"pig":"🐷","penguin":"🐧","pizza":"🍕"},
