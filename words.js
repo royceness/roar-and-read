@@ -15,7 +15,7 @@ window.RR_DATA = {
   "digraphCuts": {"ch":["Rich.","ch","end"],"ck":["Duck.","ck","manual"],"ng":["Ringgg.","ng","manual"],"qu":["Quick.","qu","manual"],"th":["Moth.","th","manual"],"th2":["This.","th","manual"]},
   "letterCuts": {"a":["Add.","v"],"b":["Bus.","x"],"c":["Cat.","c"],"d":["Dog.","x"],"e":["Egg.","v"],"f":["Fox.","c"],"g":["Gum.","x"],"h":["Hhhhat.","s"],"i":["It.","v"],"j":["Jet.","c"],
     "k":["Kid.","c"],"l":["Lllllog.","s"],"m":["Mmmmmap.","s"],"n":["Nnnnnet.","s"],"o":["Odd.","v"],"p":["Pig.","c"],"r":["Rrrrrex.","s"],"s":["Sun.","c"],"t":["Ten.","c"],"u":["Up.","v"],
-    "v":["Vvvvvan.","s"],"w":["Wwwwweb.","s"],"y":["Yyyyyes.","s"],"z":["Zzzzzip.","s"]},
+    "v":["Vvvvvan.","s"],"w":["Wwwwweb.","s"],"y":["Yum.","x"],"z":["Zzzzzip.","s"]},
   "sight": ["I","a","the","and","to","is","it","in","at","on","he","she","we","me","be","my","you","was","are","of","for","said","they","go","no","so","see","like","look","can","up","am","went","have","do","this","that","with","come","here","play","his","her","all"],
   "letters": {
     "s":{"sun":"☀️","snake":"🐍","spider":"🕷️"},"a":{"apple":"🍎","ant":"🐜","astronaut":"👨‍🚀"},"t":{"tiger":"🐯","truck":"🚚","tractor":"🚜"},"p":{"pig":"🐷","penguin":"🐧","pizza":"🍕"},
