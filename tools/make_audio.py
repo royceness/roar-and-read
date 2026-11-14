@@ -14,47 +14,22 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "audio")
 TTS = "https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2"
 STT = "https://fal.run/fal-ai/wizper"
-VOICE = "Charlie"
+VOICE = "Liam"
 
-# Words with a picture in the game, then listen-only words (used for "find the word" and as near-miss choices).
-WORDS = """cat dog sun bus pig rex van bug hen fox jet bat box cup red ten
-rat hat can pan map bag ram cab ant bed net pen web leg gem egg pin lip six kid
-log pot cop ox dot nut tub mug hut hug run
-dig big sit hop hot top mud fun wet sad mad dad mom zip win yes jam mop rug bun cub pup
-mat man pet men peg pit tin hog jog cut gum bad bit""".split()
+def data():
+    """The word lists live in words.js (shared with the game)."""
+    text = open(os.path.join(ROOT, "words.js"), encoding="utf-8").read()
+    return json.loads(text[text.index("{"):text.rindex("}") + 1])
 
-PHRASES = {
-    "find": "Find the word...",
-    "which_pic": "Read the word. Which picture is it?",
-    "build": "Build the word...",
-    "that_says": "That one says...",
-    "try_again": "Try again!",
-    "lets_go": "Let's read some words! Ready? Go!",
-    "mission": "Mission complete!",
-    "sticker": "You got a new sticker!",
-    "praise_1": "Great job!",
-    "praise_2": "Awesome!",
-    "praise_3": "You got it!",
-    "praise_4": "Roar-some!",
-    "praise_5": "Dino-mite!",
-    "praise_6": "Blast off!",
-    "praise_7": "Super reader!",
-    "praise_8": "Yes! That's right!",
-    "praise_9": "Wow, nice reading!",
-    "praise_10": "You're on fire!",
-    "praise_11": "Fantastic!",
-    "praise_12": "Out of this world!",
-    "praise_13": "High five!",
-    "praise_14": "Boom! Nailed it!",
-    "praise_15": "Amazing!",
-    "praise_16": "Monster truck power!",
-    "praise_17": "Zoom zoom! Great reading!",
-    "praise_18": "You're a reading rocket!",
-    "oops_1": "Oops! Not quite.",
-    "oops_2": "Almost!",
-    "oops_3": "Good try!",
-    "oops_4": "So close!",
-}
+
+R = data()
+WORDS = []
+for w in (list(R["cvc"]) + R["cvcExtra"] + list(R["dig"]) + R["sight"] + [w for ex in R["letters"].values() for w in ex]):
+    if w.lower() not in WORDS:
+        WORDS.append(w.lower())
+PHRASES = dict(R["say"])
+for i, (_shown, spoken) in enumerate(R["praise"], 1):
+    PHRASES["praise_%d" % i] = spoken
 
 
 def key():
@@ -87,7 +62,7 @@ def make(item):
     if os.path.exists(path) and not force:
         return cid, None, "kept"
     try:
-        res = post(TTS, {"text": text, "voice": VOICE, "stability": 0.6, "similarity_boost": 0.8, "speed": 0.92})
+        res = post(TTS, {"text": text, "voice": VOICE, "stability": 0.6, "similarity_boost": 0.8, "speed": 0.95})
         url = res["audio"]["url"]
         with urllib.request.urlopen(url, timeout=120) as r, open(path, "wb") as f:
             f.write(r.read())
@@ -120,15 +95,16 @@ def main():
                 urls[cid] = url
     print("clips on disk:", len([f for f in os.listdir(OUT) if f.endswith(".mp3")]), "of", len(items))
     if "--check" in args and urls:
-        todo = [(c, u) for c, u in urls.items() if c.startswith("w_")]
+        todo = list(urls.items())
         bad = 0
         with concurrent.futures.ThreadPoolExecutor(6) as ex:
             for cid, text in ex.map(check, todo):
-                heard = re.sub(r"[^a-z]", "", text.lower())
-                if heard != cid[2:]:
+                heard = re.sub(r"[^a-z0-9]", "", text.lower())
+                want = cid[2:] if cid.startswith("w_") else re.sub(r"[^a-z0-9]", "", PHRASES[cid].lower())
+                if heard != want:
                     bad += 1
-                    print("MISMATCH %-8s heard %r" % (cid, text.strip()))
-        print("checked", len(todo), "word clips,", bad, "mismatches")
+                    print("MISMATCH %-12s heard %r" % (cid, text.strip()))
+        print("checked", len(todo), "clips,", bad, "mismatches")
 
 
 if __name__ == "__main__":
