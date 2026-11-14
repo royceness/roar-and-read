@@ -9,7 +9,7 @@ Usage:  python3 tools/make_audio.py            # make any missing clips
 The API key is read from the FAL_AI_KEY (or FAL_KEY) environment variable, or from ~/.env.
 Clips are written to audio/<id>.mp3. Existing files are skipped.
 """
-import concurrent.futures, json, os, re, sys, urllib.request
+import concurrent.futures, json, os, re, subprocess, sys, tempfile, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "audio")
@@ -86,6 +86,40 @@ def check(item):
     return cid, text
 
 
+# Consonant sounds like "ch", "ck" or "ng" can't be spoken on their own without an added vowel ("chuh"),
+# so they are cut out of a real word instead: say the carrier word slowly with per-letter timings, then
+# keep only the part where those letters are spoken.  mode "end" keeps from the letters to the end of the
+# word (rich -> ch); mode "start" keeps from the start of the word to the end of the letters (quick -> qu).
+def make_cut(cid, spec, force):
+    path = os.path.join(OUT, cid + ".mp3")
+    if os.path.exists(path) and not force:
+        return
+    text, letters, mode = spec[:3]
+    if mode == "manual":   # cut by hand from the carrier word after looking at its waveform; not reproducible automatically
+        print("%-6s is hand-cut from %r and its file is missing - it needs cutting again by hand" % (cid, text))
+        return
+    lead = spec[3] if len(spec) > 3 else 0.0       # optional nudge (seconds) to the cut point
+    res = post(TTS, {"text": text, "voice": VOICE, "stability": 0.7, "similarity_boost": 0.8, "speed": 0.8,
+                     "timestamps": True, "previous_text": CONTEXT})
+    ts = res["timestamps"][0]
+    chars = "".join(ts["characters"]).lower()
+    st, en = ts["character_start_times_seconds"], ts["character_end_times_seconds"]
+    if mode == "end":
+        i = chars.rindex(letters)
+        a, b = st[i] + lead, en[chars.rindex(".")] if "." in chars else en[-1]
+    else:
+        i = chars.index(letters)
+        a, b = max(0.0, st[i] - 0.02), en[i + len(letters) - 1] + lead
+    with tempfile.NamedTemporaryFile(suffix=".mp3") as tmp:
+        with urllib.request.urlopen(res["audio"]["url"], timeout=120) as r:
+            tmp.write(r.read())
+        tmp.flush()
+        flt = "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.012,afade=t=out:st=%.3f:d=0.04,volume=1.8,alimiter" % (a, b, max(0.0, b - a - 0.04))
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", tmp.name, "-af", flt, "-codec:a", "libmp3lame", "-q:a", "3", path], check=True)
+    print("%-6s cut from %-8s %.2fs-%.2fs (%d ms)   letter timings: %s" % (cid, text, a, b, (b - a) * 1000,
+          " ".join("%s@%.2f" % (c, t) for c, t in zip(ts["characters"], st) if c.strip())))
+
+
 # Single short words are sometimes read as if they were another language ("pan", "zebra", "I").
 # --fix tries stronger hints that the word is English and keeps the first take that transcribes back correctly.
 TURBO = "https://fal.run/fal-ai/elevenlabs/tts/turbo-v2.5"
@@ -138,6 +172,8 @@ def main():
                 print(cid, status)
             if url:
                 urls[cid] = url
+    for dg, spec in R.get("digraphCuts", {}).items():
+        make_cut("d_" + dg, spec, dg in redo or "d_" + dg in redo)
     print("clips on disk:", len([f for f in os.listdir(OUT) if f.endswith(".mp3")]), "of", len(items))
     if "--check" in args and urls:
         todo = list(urls.items())

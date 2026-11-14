@@ -228,7 +228,8 @@ const add=o=>{ITEMS.push(o);BY[o.id]=o};
 Object.entries(R.letters).forEach(([c,ex])=>add({id:'l_'+c,kind:'letter',w:c,ex:Object.entries(ex)}));
 Object.entries(R.cvc).forEach(([w,p])=>add({id:w,kind:'cvc',w,g:[...w],pic:p}));
 R.cvcExtra.forEach(w=>add({id:w,kind:'cvc',w,g:[...w],pic:''}));
-Object.entries(R.dig).forEach(([w,[g,p]])=>{g=g.split(' ');add({id:w,kind:'dig',w,g,pic:p,t:g.findIndex(x=>DG.includes(x))})});
+// snd is the recording for the word's digraph: 'th' has two sounds, voiceless (thin) and voiced (this, marked th2 in words.js)
+Object.entries(R.dig).forEach(([w,[g,p,snd]])=>{g=g.split(' ');const t=g.findIndex(x=>DG.includes(x));add({id:w,kind:'dig',w,g,pic:p,t,snd:snd||g[t]})});
 R.sight.forEach(w=>add({id:'s_'+w.toLowerCase(),kind:'sight',w,g:[...w],pic:''}));
 const KINDS={letter:'🔤 Letter sounds',cvc:'🐱 Short words',dig:'🚢 Digraphs',sight:'👀 Sight words'};
 const aud=w=>'w_'+w.toLowerCase();
@@ -539,7 +540,7 @@ $('#choices').addEventListener('click',ev=>{
   if(q.type==='build'){
     // any letter can be placed in the next empty box; tapping a box takes its letter back (see the #stage handler)
     const sl=[...$('#slots').children],i=sl.findIndex(s=>!s.tile);if(i<0)return;
-    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);if(DG.includes(v))speak(['d_'+v]);
+    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);if(DG.includes(v))speak(['d_'+(v===it.g[it.t]?it.snd:v)]);
     sl.forEach(x=>x.classList.remove('bad'));
     if(sl.every(x=>x.tile)){
       if(sl.every((x,j)=>x.textContent===it.g[j])){$('#slots').classList.add('done');win(s)}
@@ -573,7 +574,7 @@ async function win(el){
   const h=$('#hero');h.style.left=`calc((100% - 2.1em) * ${(g.i+1)/g.q.length})`;h.classList.remove('hop');void h.offsetWidth;h.classList.add('hop');
   const r=el.getBoundingClientRect(),pi=rndi(1,PRAISE.length-1);
   celebrate(tier,{x:r.left+r.width/2,y:r.top+r.height/2,text:learned?'You learned it!':PRAISE[pi],dur:1700});
-  await Promise.all([Promise.race([speak([...(it.kind==='dig'?['d_'+it.g[it.t]]:[]),aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
+  await Promise.all([Promise.race([speak([...(it.kind==='dig'?['d_'+it.snd]:[]),aud(word),'praise_'+pi]),wait(7000)]),wait(1700+tier*200)]);
   if(G!==g)return;
   g.i++;g.i>=g.q.length?finish():ask();
 }
@@ -596,11 +597,11 @@ function progress(){
   const list=pool(PT),seen=list.filter(it=>D.words[it.id]).length,k=known(PT);
   document.querySelectorAll('#ptabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===PT));
   $('#psummary').textContent=`📖 ${k} of ${list.length} known · ${seen-k} in progress · ${D.missions} missions played`;
-  $('#wordgrid').innerHTML=(PT==='dig'?DG.map(d=>`<button class="wchip dg" data-d="${d}">🔊 ${d}</button>`).join('')+'<div style="flex-basis:100%"></div>':'')+list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
+  $('#wordgrid').innerHTML=(PT==='dig'?['sh','ch','th','th2',...DG.slice(3)].map(d=>`<button class="wchip dg" data-d="${d}">🔊 ${d==='th'?'th (thin)':d==='th2'?'th (this)':d}</button>`).join('')+'<div style="flex-basis:100%"></div>':'')+list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
 }
 $('#ptabs').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;PT=b.dataset.t;$('#detail').textContent='';progress()});
 $('#wordgrid').addEventListener('click',ev=>{
-  const dg=ev.target.closest('[data-d]');if(dg){speak(['d_'+dg.dataset.d]);$('#detail').textContent=`The sound recording for “${dg.dataset.d}”`;return}
+  const dg=ev.target.closest('[data-d]');if(dg){speak(['d_'+dg.dataset.d]);$('#detail').textContent=`The sound recording for “${dg.dataset.d.slice(0,2)}”`;return}
   const b=ev.target.closest('[data-id]');if(!b)return;const it=BY[b.dataset.id],r=D.words[it.id];
   speak(it.kind==='letter'?it.ex.map(e=>aud(e[0])):[aud(it.w)]);
   $('#detail').textContent=(it.kind==='letter'?`“${it.w}” (${it.ex.map(e=>e[0]).join(', ')})`:`“${it.w}”`)+' — '+(!r?'not met yet':`step ${r.l} of 3 · asked ${r.n} times · right first try ${r.c} · wrong taps ${r.w}`)+(it.kind==='cvc'||it.kind==='dig'?(it.pic?'':' · listen-only word (no picture)'):'');
