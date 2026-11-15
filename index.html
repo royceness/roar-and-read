@@ -77,6 +77,11 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 .gap{display:inline-block;min-width:1.5em;border-bottom:.09em solid var(--yellow);text-align:center;margin:0 .06em}
 .gap.got{border-color:transparent;color:var(--lime);animation:zoomin .3s cubic-bezier(.3,1.8,.5,1)}
 .hl{color:var(--lime)}
+.gr{display:inline-block;cursor:pointer}
+.gr.pop{animation:hop .4s ease-out}
+.bigword.meet{color:var(--yellow)}
+.bigpic.sm{font-size:clamp(50px,12vmin,110px)}
+.card.go2{background:linear-gradient(#b4ff9c,#62e04c);border-color:#2fbf4a;box-shadow:0 10px 0 #2fbf4a;color:#0d4d1a;font-size:clamp(50px,12vmin,110px);width:min(100%,420px);justify-self:center}
 .card .hl{color:#e8590c}
 .wchip.dg{background:var(--orange);color:#fff}
 .seg{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:4px;background:rgba(255,255,255,.12);border-radius:26px;padding:5px;max-width:100%}
@@ -175,7 +180,7 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 <section id="home" class="screen on">
   <div class="parade"><span><span class="flip" style="display:inline-block">🦖</span></span><span>🚀</span><span><span class="flip" style="display:inline-block">🚚</span></span></div>
   <h1 class="title">Roar <span>&amp;</span> Read</h1>
-  <div class="seg" id="modes"><button data-m="letter">🔤 Letter sounds</button><button data-m="cvc">🐱 Short words</button><button data-m="dig">🚢 Digraphs</button><button data-m="sight">👀 Sight words</button><button data-m="all">🌈 Mix</button></div>
+  <div class="seg" id="modes"><button data-m="letter">🔤 Letter sounds</button><button data-m="cvc">🐱 Short words</button><button data-m="dig">🚢 Digraphs</button><button data-m="sight">👀 Sight words</button><button data-m="all">🗺️ Journey</button></div>
   <button class="go" id="play">GO!</button>
   <div class="stats"><span>⭐ <b id="hstars">0</b></span><span>📖 <b id="hknown">0</b></span><span>🏆 <b id="hstick">0</b></span></div>
   <div class="row"><button class="pill" id="tobook">🏆 Stickers</button><button class="pill" id="toprog">🔧 Grown-ups</button></div>
@@ -202,7 +207,9 @@ button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulat
 <section id="prog" class="screen scroll">
   <div class="top"><button class="round back">←</button><h2>For grown-ups</h2><span style="width:2.4em"></span></div>
   <div class="panel"><h3 id="psummary"></h3>
-    <p class="small" style="margin:0">Each mission is 6 questions. Every question ends on the right answer; what's tracked is whether it was right <b>first try</b>. First try moves an item up a step, a wrong tap moves it down one. Three steps up and it counts as known, and it then comes back now and then for review. <b>Mix</b> takes turns between all four groups.</p></div>
+    <p class="small" style="margin:0">Each mission is 6 questions. Every question ends on the right answer; what's tracked is whether it was right <b>first try</b>. First try moves an item up a step, a wrong tap moves it down one. Three steps up and it counts as known, and it then comes back now and then for review. </p>
+    <p class="small" style="margin:8px 0 0"><b>Journey</b> is the step-by-step path: letter sounds first, short words as their letters are learned, then digraphs one at a time and a few sight words. New letters, digraphs and sight words are shown and said before they are asked, and brand-new items have two choices instead of three. In reading questions he can tap a letter to hear its sound; the answer still counts as right, but the item doesn't move up a step.</p>
+    <p class="small" id="pathinfo" style="margin:8px 0 0"></p></div>
   <div class="seg" id="ptabs"><button data-t="letter">🔤 Letter sounds</button><button data-t="cvc">🐱 Short words</button><button data-t="dig">🚢 Digraphs</button><button data-t="sight">👀 Sight words</button></div>
   <div class="panel"><h3>Everything in this group (tap to hear the recording)</h3>
     <div class="chips" id="wordgrid"></div>
@@ -257,6 +264,10 @@ R.sight.forEach(w=>add({id:'s_'+w.toLowerCase(),kind:'sight',w,g:[...w],pic:''})
 const KINDS={letter:'🔤 Letter sounds',cvc:'🐱 Short words',dig:'🚢 Digraphs',sight:'👀 Sight words'};
 const aud=w=>'w_'+w.toLowerCase();
 // digraph words show their digraphs in a highlight colour
+// tappable version for reading questions: each letter or digraph says its sound when tapped
+const gsnd=(it,x)=>DG.includes(x)?'d_'+(x==='th'?it.snd:x):'l_'+x[0];
+const gs=(it,x)=>`<span class="gr${DG.includes(x)?' hl':''}" data-s="${gsnd(it,x)}">${x}</span>`;
+const gw=it=>it.g.map(x=>gs(it,x)).join('');
 const hw=it=>it.kind==='dig'?it.g.map(x=>DG.includes(x)?`<span class="hl">${x}</span>`:x).join(''):it.w;
 const sz=w=>w.length>=7?' s':w.length>=5?' m':'';
 // Pictures that could be mistaken for each other are never offered together.
@@ -268,7 +279,7 @@ const HEROES=[{e:'🚀',g:'🪐'},{e:'🦖',g:'🌋',f:1},{e:'🚚',g:'🏗️',
 const STICKERS=['🦖','🦕','🐊','🦈','🐅','🦁','🐘','🦏','🦍','🐺','🦅','🦂','🐍','🐙','🦑','🐋','🐢','🦎','🐉','🦇','🚚','🚒','🚓','🚜','🚑','🚌','🏎️','🚂','🚁','✈️','🚀','🛸','🛰️','🚢','⛵','🚲','🏍️','🚧','🏗️','🪐','🌍','🌙','☄️','⭐','🌋','⚡','🔥','🌪️','⚽','🏀','🏈','⚾','🛹','🤖','👾','🎸','🥁','🧲','🔭','🏆','🥇','🦴'];
 
 const KEY='roarRead.v1';
-const blank=()=>({words:{},stars:0,missions:0,stickers:[],mode:'all'});
+const blank=()=>({words:{},met:{},stars:0,missions:0,stickers:[],mode:'all'});
 let D=blank();
 try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.words)D=Object.assign(blank(),d)}catch(e){}
 if(D.mode!=='all'&&!KINDS[D.mode])D.mode='all';
@@ -297,14 +308,39 @@ const lvl=id=>D.words[id]?D.words[id].l:0;
 const pool=m=>ITEMS.filter(it=>m==='all'||it.kind===m);
 const known=m=>pool(m).filter(it=>lvl(it.id)>=3).length;
 
+// ---- Journey (mode 'all'): a step-by-step path instead of everything at once ----
+//  * letter sounds are always available and come first
+//  * a short word unlocks once every letter in it is at step 2 or more
+//  * digraphs unlock one at a time, in PATH order: the first after 15 short words are known,
+//    each next one after two words with the previous digraph are known
+//  * sight words start after 5 short words are known, one new one per mission
+const PATH=['sh','ch','th','ck','ng','ee','oo','ar','or','ai','oa','qu','wh'];
+function pathState(){
+  const kn=k=>ITEMS.filter(it=>it.kind===k&&lvl(it.id)>=3).length,letters=kn('letter'),cvc=kn('cvc');
+  let open=0;
+  if(cvc>=15){open=1;while(open<PATH.length&&ITEMS.filter(it=>it.kind==='dig'&&it.g[it.t]===PATH[open-1]&&lvl(it.id)>=3).length>=2)open++}
+  return {letters,cvc,open,sight:cvc>=5};
+}
+function eligible(it,ps){
+  const letterOK=c=>c==='x'?ps.letters>=20:lvl('l_'+c)>=2;      // x has no letter question of its own
+  const gOK=g=>DG.includes(g)?PATH.indexOf(g)<ps.open:[...g].every(letterOK);
+  return it.kind==='letter'||(it.kind==='sight'?ps.sight:it.g.every(gOK));
+}
+// New letters, digraphs and sight words are shown and said once before they are ever asked.
+function meetOf(it){
+  if(it.kind==='letter'&&!D.words[it.id]){const [w,p]=it.ex[0];return {key:it.id,big:it.w,snd:['l_'+it.w,aud(w)],pic:p,word:w,html:`<span class="hl">${w[0]}</span>${w.slice(1)}`}}
+  if(it.kind==='dig'&&!D.met[it.snd])return {key:it.snd,big:it.g[it.t],snd:['d_'+it.snd,aud(it.w)],pic:it.pic,word:it.w,html:hw(it)};
+  if(it.kind==='sight'&&!D.words[it.id])return {key:it.id,big:it.w,snd:[aud(it.w)],pic:'',word:''};
+  return null;
+}
 function buildMission(){
-  const N=6,last=it=>D.words[it.id].last,list=pool(D.mode);
+  const N=6,last=it=>D.words[it.id].last,ps=pathState(),list=D.mode==='all'?ITEMS.filter(it=>eligible(it,ps)):pool(D.mode);
   const seen=list.filter(it=>D.words[it.id]);
   const learning=seen.filter(it=>lvl(it.id)<3).sort((a,b)=>last(a)-last(b));
   const done=seen.filter(it=>lvl(it.id)>=3).sort((a,b)=>last(a)-last(b));
   let unseen=list.filter(it=>!D.words[it.id]);
-  if(D.mode==='all'){   // the mix takes turns between the four kinds when bringing in something new
-    const by=Object.keys(KINDS).map(k=>unseen.filter(it=>it.kind===k));unseen=[];
+  if(D.mode==='all'){   // take turns between whichever kinds are unlocked when bringing in something new
+    const by=Object.keys(KINDS).map(k=>unseen.filter(it=>it.kind===k).slice(0,k==='sight'?1:99));unseen=[];
     while(by.some(a=>a.length))by.forEach(a=>{if(a.length)unseen.push(a.shift())});
   }
   const rev=done.splice(0,Math.min(1,done.length));
@@ -312,11 +348,19 @@ function buildMission(){
   const out=[...rev,...unseen.splice(0,nNew)];
   out.push(...learning.splice(0,Math.max(0,N-out.length)));
   for(const p of [unseen,learning,done])while(out.length<N&&p.length)out.push(p.shift());
-  return shuffle(out).map(it=>({it,type:pickType(it)}));
+  return shuffle(out).map(it=>({it,type:pickType(it,ps)}));
 }
 // Kinds of question: hear (hear a word, tap it), read (read a word, tap its picture), build (tap the letters in order),
 // fill (choose the missing digraph), first (which letter does it start with). Easier kinds come first for newer items.
-function pickType(it){
+// On the Journey, wrong choices never use something that is still locked, and the missing-digraph
+// question waits until there are at least two unlocked digraphs of that kind to choose between.
+const openDG=ps=>D.mode==='all'?PATH.slice(0,ps.open):DG;
+function pickType(it,ps){
+  const t=pickType0(it);
+  if(t==='fill'&&openDG(ps).filter(d=>VDG.includes(d)===VDG.includes(it.g[it.t])).length<2)return it.pic?'read':'hear';
+  return t;
+}
+function pickType0(it){
   const l=lvl(it.id),r=Math.random();
   if(it.kind==='letter')return 'first';
   if(it.kind==='sight')return 'hear';
@@ -335,9 +379,9 @@ function others(it,list,n,hard,ok){
   const out=[];for(const x of c){if(!ok||ok(x,out))out.push(x);if(out.length===n)break}
   return out;
 }
-function tiles(it){
+function tiles(it,ps){
   const has=x=>it.g.includes(x)||it.w.includes(x);
-  const extra=it.kind==='dig'?[pick(DG.filter(d=>!has(d)&&VDG.includes(d)===VDG.includes(it.g[it.t]))),pick([...'bdfghjlmnprstvw'].filter(c=>!has(c)))]
+  const extra=it.kind==='dig'?[pick(openDG(ps).filter(d=>!has(d)&&VDG.includes(d)===VDG.includes(it.g[it.t])))||pick([...'aeiou'].filter(c=>!has(c))),pick([...'bdfghjlmnprstvw'].filter(c=>!has(c)))]
     :[pick([...'aeiou'].filter(c=>!has(c))),pick([...'bdfghjlmnprstvwz'].filter(c=>!has(c)))];
   return shuffle([...it.g,...extra]);
 }
@@ -539,51 +583,65 @@ function start(){
 }
 function promptIds(){
   const q=G.cur,it=q.it;
+  if(q.meeting)return q.meeting;
   return q.type==='hear'?['find',aud(it.w)]:q.type==='read'?['which_pic']:q.type==='build'?['build',aud(it.w)]:q.type==='fill'?[aud(it.w),'missing']:[aud(q.ex[0]),'first_q'];
 }
 const prompt=()=>speak(promptIds());
 function ask(){
   const q=G.q[G.i],it=q.it,hard=lvl(it.id)>=1,stage=$('#stage'),box=$('#choices'),cols=shuffle(['#4de3ff','#8dff6b','#ffe14d','#ff9f1c','#ff7ad9','#a98bff']);
-  G.cur=q;q.first=true;q.pos=0;q.t0=performance.now();q.t1=0;q.wrong=[];q.replays=0;q.lb=lvl(it.id);
+  G.cur=q;q.first=true;q.pos=0;q.t0=performance.now();q.t1=0;q.wrong=[];q.replays=0;q.hints=0;q.lb=lvl(it.id);
   const card=(cls,txt,val,i)=>`<button class="card ${cls}" data-v="${val}" style="--c:${cols[i%6]}">${txt}</button>`;
   const again='<button class="round" id="again">🔊</button>';
   const wc=xs=>xs.some(x=>x.w.length>=5)?'word sm':xs.some(x=>x.w.length>=4)?'word md':'word';
+  const m=!q.met&&meetOf(it);
+  if(m){   // introduce it first: show it, say it, and wait for the green button
+    q.met=true;q.meeting=m.snd;D.met[m.key]=1;save();
+    stage.innerHTML=again+`<div class="bigword meet${sz(m.big)}">${m.big}</div>`+(m.word?`<div class="reveal">${m.pic?`<span class="bigpic sm">${m.pic}</span>`:''}<span class="bigword s">${m.html}</span></div>`:'');
+    box.style.gridTemplateColumns='1fr';box.innerHTML='<button class="card go2" data-go="1">▶</button>';
+    G.locked=false;prompt();return;
+  }
+  q.meeting=null;
+  const nc=lvl(it.id)<=0?1:2;   // brand-new items get two choices, then three
+  const ps=pathState(),gate=xs=>{const g=xs.filter(x=>D.mode!=='all'||eligible(x,ps));return g.length>nc?g:xs};
   let cards;
   if(q.type==='hear'){
-    const xs=shuffle([it,...others(it,ITEMS.filter(x=>x.kind===it.kind),2,hard)]);
+    const xs=shuffle([it,...others(it,gate(ITEMS.filter(x=>x.kind===it.kind)),nc,hard)]);
     stage.innerHTML='<button class="speaker" id="spk">🔊</button>';cards=xs.map((x,i)=>card(wc(xs),hw(x),x.id,i));
   }else if(q.type==='read'){
-    const xs=shuffle([it,...others(it,ITEMS.filter(x=>x.kind===it.kind&&x.pic),2,hard,(x,out)=>!clash(x.w,it.w)&&!out.some(o=>clash(o.w,x.w)))]);
-    stage.innerHTML=again+`<div class="bigword${sz(it.w)}">${hw(it)}</div>`;cards=xs.map((x,i)=>card('pic',x.pic,x.id,i));
+    const xs=shuffle([it,...others(it,gate(ITEMS.filter(x=>x.kind===it.kind&&x.pic)),nc,hard,(x,out)=>!clash(x.w,it.w)&&!out.some(o=>clash(o.w,x.w)))]);
+    stage.innerHTML=again+`<div class="bigword${sz(it.w)}">${gw(it)}</div>`;cards=xs.map((x,i)=>card('pic',x.pic,x.id,i));
   }else if(q.type==='build'){
     stage.innerHTML=again+`<div class="bigpic">${it.pic}</div><div class="slots" id="slots">${it.g.map(()=>'<div class="slot"></div>').join('')}</div>`;
-    cards=tiles(it).map((x,i)=>card('tile',x,x,i));
+    cards=tiles(it,ps).map((x,i)=>card('tile',x,x,i));
   }else if(q.type==='fill'){
-    const t=it.g[it.t],cls=VDG.includes(t)?VDG:DG.filter(d=>!VDG.includes(d));
-    const xs=shuffle([t,...shuffle(cls.filter(d=>d!==t&&!it.g.includes(d))).slice(0,2)]);
-    stage.innerHTML=again+(it.pic?`<div class="bigpic">${it.pic}</div>`:'')+`<div class="bigword${sz(it.w+'x')}">${it.g.map((x,i)=>i===it.t?'<span class="gap" id="gap">&nbsp;</span>':DG.includes(x)?`<span class="hl">${x}</span>`:x).join('')}</div>`;
+    const t=it.g[it.t],all=VDG.includes(t)?VDG:DG.filter(d=>!VDG.includes(d)),un=all.filter(d=>openDG(ps).includes(d)),cls=un.length>nc?un:all;
+    const xs=shuffle([t,...shuffle(cls.filter(d=>d!==t&&!it.g.includes(d))).slice(0,nc)]);
+    stage.innerHTML=again+(it.pic?`<div class="bigpic">${it.pic}</div>`:'')+`<div class="bigword${sz(it.w+'x')}">${it.g.map((x,i)=>i===it.t?'<span class="gap" id="gap">&nbsp;</span>':gs(it,x)).join('')}</div>`;
     cards=xs.map((x,i)=>card('word',x,x,i));
   }else{
     q.ex=pick(it.ex);
     stage.innerHTML=again+(q.ex[1]?`<div class="bigpic">${q.ex[1]}</div>`:'<button class="speaker" id="spk">🔊</button>');
-    cards=shuffle([it.w,...letterOthers(it.w,hard)]).map((x,i)=>card('word',x,x,i));
+    cards=shuffle([it.w,...letterOthers(it.w,hard).slice(0,nc)]).map((x,i)=>card('word',x,x,i));
   }
   box.style.gridTemplateColumns=`repeat(${cards.length},1fr)`;box.innerHTML=cards.join('');q.choices=[...box.children].map(c=>c.textContent).join('|');
   G.locked=false;prompt();
 }
 $('#stage').addEventListener('click',ev=>{
   if(!G||G.locked)return;
+  const gr=ev.target.closest('.gr');
+  if(gr){G.cur.hints++;speak([gr.dataset.s]);gr.classList.remove('pop');void gr.offsetWidth;gr.classList.add('pop');return}   // hear a letter's sound
   const s=ev.target.closest('.slot');
   if(s&&s.tile){s.tile.classList.remove('used');s.tile=null;s.textContent='';s.classList.remove('full','bad');note(260,0,.12,'triangle',.07);return}
   if(ev.target.closest('#spk,#again')){G.cur.replays++;prompt()}
 });
 $('#choices').addEventListener('click',ev=>{
   const b=ev.target.closest('.card');if(!b||!G||G.locked||b.classList.contains('no')||b.classList.contains('used'))return;
+  if(b.dataset.go){ask();return}
   const q=G.cur,it=q.it,v=b.dataset.v;
   if(q.type==='build'){
     // any letter can be placed in the next empty box; tapping a box takes its letter back (see the #stage handler)
     const sl=[...$('#slots').children],i=sl.findIndex(s=>!s.tile);if(i<0)return;
-    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);if(DG.includes(v))speak(['d_'+(v===it.g[it.t]?it.snd:v)]);
+    const s=sl[i];s.tile=b;s.textContent=v;s.classList.add('full');b.classList.add('used');blip(i);speak([DG.includes(v)?'d_'+(v===it.g[it.t]?it.snd:v):'l_'+v[0]]);
     sl.forEach(x=>x.classList.remove('bad'));
     if(sl.every(x=>x.tile)){
       if(sl.every((x,j)=>x.textContent===it.g[j])){$('#slots').classList.add('done');win(s)}
@@ -608,10 +666,12 @@ function miss(btn,v){
 }
 async function win(el){
   const g=G,q=g.cur,it=q.it,rec=record(it.id),old=rec.l;g.locked=true;
-  rec.n++;rec.last=Date.now();
-  if(q.first){rec.c++;rec.l=Math.min(3,rec.l+1);g.first++;g.streak++;D.stars++}
+  const fresh=rec.n===0;rec.n++;rec.last=Date.now();
+  // Right first try moves the item up a step (two steps the very first time, unless it was only just introduced).
+  // If he tapped letters to hear their sounds, the answer still counts as right but the item stays on its step.
+  if(q.first){rec.c++;if(!q.hints)rec.l=Math.min(3,fresh&&!q.met?2:rec.l+1);g.first++;g.streak++;D.stars++}
   const tn=performance.now(),secs=t=>Math.round((t-q.t0)/100)/10;
-  logRow([Date.now(),g.n,D.mode,it.kind,it.w,q.type,q.ex?q.ex[0]:'',q.first?1:0,q.wrong.join('|'),secs(q.t1||tn),secs(tn),q.replays,q.lb,rec.l,q.choices]);
+  logRow([Date.now(),g.n,D.mode,it.kind,it.w,q.type,q.ex?q.ex[0]:'',q.first?1:0,q.wrong.join('|'),secs(q.t1||tn),secs(tn),q.replays,q.lb,rec.l,q.choices,q.hints,q.met?1:0]);
   save();
   const learned=rec.l===3&&old<3,word=q.ex?q.ex[0]:it.w,pic=q.ex?q.ex[1]:it.pic;
   let tier=q.first?2+(g.streak>=3?1:0):1;if(learned)tier=4;
@@ -650,7 +710,7 @@ function exportLog(rows){
     `# Roar & Read practice log. Exported ${stamp(Date.now())}. ${rows.length} questions`+(rows.length?`, ${stamp(rows[0][0])} to ${stamp(rows[rows.length-1][0])}.`:'.'),
     '# A young child (pre-reader to early reader) plays missions of 6 questions. There is no timer and every question continues until it is answered correctly.',
     '# Columns:',
-    '#   time = local time the question was finished; mission = mission number; mode = what was chosen on the home screen (letter, cvc, dig, sight or all = a mix)',
+    '#   time = local time the question was finished; mission = mission number; mode = what was chosen on the home screen (letter, cvc, dig, sight or all = the step-by-step Journey)',
     '#   group = letter (first sounds), cvc (three-letter short-vowel words), dig (words with a digraph: sh ch th ck ng qu wh ee oo ar or ai oa) or sight (high-frequency words)',
     '#   item = the letter or word; example_word = for letter questions, the spoken word whose first letter was asked',
     '#   question_type: first = hear a word and tap the letter it starts with; hear = hear a word and tap the written word;',
@@ -658,11 +718,13 @@ function exportLog(rows){
     '#   first_try = 1 if the first answer was right; wrong_taps = everything tapped wrongly, in order, separated by | (for build: each wrong spelling tried)',
     '#   seconds_to_first_tap and seconds_to_correct are measured from the question appearing and include listening to the spoken prompt (about 2 seconds)',
     '#   audio_replays = times the child tapped the speaker to hear the prompt again',
-    '#   step_before / step_after = 0 to 3. Right first try raises it by one, a wrong first answer lowers it by one, 3 = known. Higher steps get harder question types and look-alike choices',
+    '#   sound_hints = times the child tapped a letter or digraph in the written word to hear its sound (a right answer after a hint does not raise the step)',
+    '#   introduced_first = 1 if the item was shown and said on an introduction card just before this question',
+    '#   step_before / step_after = 0 to 3. Right first try raises it by one, a wrong first answer lowers it by one, 3 = known (the very first right answer jumps to 2). Step 0 items get two choices, later ones three, with harder question types and look-alike choices',
     '#   choices = what was offered, in screen order, separated by | (pictures appear as emoji; for build these are the letter tiles)',
     '# Current state on this device:',...state,
     `#   Missions played: ${D.missions}. Most wrong taps: ${hard.join('; ')||'none yet'}`,
-    'time,mission,mode,group,item,question_type,example_word,first_try,wrong_taps,seconds_to_first_tap,seconds_to_correct,audio_replays,step_before,step_after,choices',
+    'time,mission,mode,group,item,question_type,example_word,first_try,wrong_taps,seconds_to_first_tap,seconds_to_correct,audio_replays,step_before,step_after,choices,sound_hints,introduced_first',
     ...rows.map(r=>[stamp(r[0]),...r.slice(1)].join(','))].join('\n');
 }
 function logInfo(){$('#loginfo').textContent=(LOG.length?`${LOG.length} answers logged since ${stamp(LOG[0][0]).slice(0,10)}. `:'Nothing logged yet. ')+LOGNOTE;$('#copymsg').textContent='';$('#logbox').style.display='none'}
@@ -672,6 +734,8 @@ function progress(){
   const list=pool(PT),seen=list.filter(it=>D.words[it.id]).length,k=known(PT);
   document.querySelectorAll('#ptabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===PT));
   $('#psummary').textContent=`📖 ${k} of ${list.length} known · ${seen-k} in progress · ${D.missions} missions played`;
+  const ps=pathState(),un=ITEMS.filter(it=>it.kind==='cvc'&&eligible(it,ps)).length;
+  $('#pathinfo').textContent=`Journey right now: ${ps.letters} of 25 letter sounds known · ${un} of 82 short words unlocked · digraphs: ${ps.open?PATH.slice(0,ps.open).join(', '):'locked until 15 short words are known ('+ps.cvc+' so far)'} · sight words: ${ps.sight?'on, one new per mission':'start after 5 short words are known'}`;
   logInfo();
   $('#wordgrid').innerHTML=(PT==='dig'?['sh','ch','th','th2',...DG.slice(3)].map(d=>`<button class="wchip dg" data-d="${d}">🔊 ${d==='th'?'th (thin)':d==='th2'?'th (this)':d}</button>`).join('')+'<div style="flex-basis:100%"></div>':'')+list.map(it=>{const r=D.words[it.id];return `<button class="wchip lv${r?r.l:'-'}" data-id="${it.id}">${it.kind==='letter'?'':(it.pic||'🔊')+' '}${it.w}${r&&r.w?` <small>✗${r.w}</small>`:''}</button>`}).join('');
 }
