@@ -412,12 +412,15 @@ function fallback(id){   // if a recording is missing, use the device's own voic
   return new Promise(res=>{if(!t||!window.speechSynthesis)return res();
     try{const u=new SpeechSynthesisUtterance(t);u.rate=.85;u.onend=u.onerror=res;speechSynthesis.speak(u);setTimeout(res,4000)}catch(e){res()}});
 }
+const SOUND_GAP=600;   // ms of silence after a letter or digraph sound
 let voiceTok=0,curSrc=null;
 async function speak(ids){   // plays clips one after another; a newer call cuts off an older one
   const tok=++voiceTok,a=ac();
   if(curSrc){try{curSrc.stop()}catch(e){}curSrc=null}
   if(!a)return;
-  for(const id of ids){
+  for(let i=0;i<ids.length;i++){
+    const id=ids[i];
+    if(i&&/^[ld]_/.test(ids[i-1])){await wait(SOUND_GAP);if(tok!==voiceTok)return}   // let a letter or digraph sound stand alone before what follows
     const b=await load(id);if(tok!==voiceTok)return;
     if(!b){await fallback(id);if(tok!==voiceTok)return;continue}
     await new Promise(res=>{const s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.onended=res;curSrc=s;s.start()});
